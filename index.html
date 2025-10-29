@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>BULOFK Games – Canabalt</title>
+  <style>
+    :root { --bg:#07070a; --card:#0f1114; --muted:#9aa3b2; --accent:#1e90ff; --ok:#41c27a; color-scheme: dark; }
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#eef}
+    .wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px}
+    .card{width:100%;max-width:820px;background:var(--card);border-radius:10px;padding:20px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 22px rgba(0,0,0,0.6)}
+    h1{margin:0;font-size:20px}
+    p.lead{margin:8px 0 16px;color:var(--muted)}
+    ul.candidates{margin:10px 0 0;padding-left:18px;color:var(--muted)}
+    li.ok{color:var(--ok)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    a.btn{display:inline-block;padding:8px 12px;border-radius:8px;background:var(--accent);color:white;text-decoration:none}
+    .small{font-size:13px;color:var(--muted);margin-top:12px}
+    code{background:#0b0b0d;padding:2px 6px;border-radius:4px;color:#9cd}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>BULOFK Games – Canabalt</h1>
+      <p class="lead">Searching for a playable HTML export in this repository. If found, you will be redirected.</p>
+
+      <div id="status">Checking for playable files...</div>
+      <ul class="candidates" id="checked" aria-live="polite"></ul>
+
+      <div class="row">
+        <a id="openFound" class="btn" href="#" style="display:none" target="_self">Open game</a>
+      </div>
+
+      <div class="small" style="margin-top:12px" id="fallback">
+        If nothing is found automatically, place a compiled HTML5 export (the browser-playable files) into the repository root. Typical paths are <code>export/html5/bin/index.html</code>, <code>bin/index.html</code> or <code>game/index.html</code>.
+      </div>
+    </div>
+  </div>
+
+<script>
+(async function(){
+  // Update or extend this list if your exported game uses another location
+  const candidates = [
+    'index.html',
+    'export/html5/bin/index.html',
+    'export/html5/index.htm',
+    'export/html5/index.html',
+    'bin/index.html',
+    'bin/index.htm',
+    'game/index.html',
+    'game/index.htm',
+    'play.html',
+    'Canabalt.html',
+    'dist/index.html',
+    'build/index.html'
+  ];
+
+  const checkedEl = document.getElementById('checked');
+  const status = document.getElementById('status');
+  const openFound = document.getElementById('openFound');
+
+  async function exists(url){
+    try {
+      // HEAD may be blocked by some hosts, fallback to GET
+      const r = await fetch(url, { method: 'HEAD' });
+      if (r && r.ok) return true;
+      const r2 = await fetch(url, { method: 'GET' });
+      return r2 && r2.ok;
+    } catch(e){
+      return false;
+    }
+  }
+
+  for (let path of candidates){
+    const li = document.createElement('li');
+    li.textContent = path + ' — checking...';
+    checkedEl.appendChild(li);
+    try {
+      const ok = await exists(path);
+      if(ok){
+        li.textContent = path + ' — found ✅';
+        li.className = 'ok';
+        status.textContent = 'Playable file found — loading: ' + path;
+        openFound.href = path;
+        openFound.style.display = 'inline-block';
+        // small delay then navigate
+        setTimeout(()=>{ window.location.href = path; }, 600);
+        return;
+      } else {
+        li.textContent = path + ' — not found';
+      }
+    } catch(err){
+      li.textContent = path + ' — error';
+    }
+  }
+
+  // nothing found
+  status.textContent = 'No playable HTML file found automatically.';
+})();
+</script>
+</body>
+</html>
