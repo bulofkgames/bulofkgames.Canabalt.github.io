@@ -5,189 +5,81 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>BULOFK Games – Canabalt</title>
   <style>
-    :root { --bg:#07070a; --card:#0f1114; --muted:#9aa3b2; --accent:#1e90ff; --ok:#41c27a; color-scheme: dark; }
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:#eef}
-    .wrap{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px}
-    .card{width:100%;max-width:980px;background:var(--card);border-radius:10px;padding:20px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 22px rgba(0,0,0,0.6)}
-    h1{margin:0;font-size:20px}
-    p.lead{margin:8px 0 16px;color:var(--muted)}
-    ul.candidates{margin:10px 0 0;padding-left:18px;color:var(--muted)}
-    li.ok{color:var(--ok)}
-    .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-    a.btn{display:inline-block;padding:8px 12px;border-radius:8px;background:var(--accent);color:white;text-decoration:none}
-    .small{font-size:13px;color:var(--muted);margin-top:12px}
-    code{background:#0b0b0d;padding:2px 6px;border-radius:4px;color:#9cd}
-    .play-area{margin-top:16px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.02); background:#000}
-    .embed-wrap{position:relative;padding-top:56.25% /* 16:9 */; background:#000}
-    .embed-wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0}
-    .credit{font-size:12px;color:#9aa3b2;text-align:center;margin-top:10px}
-    .hidden{display:none}
-    .notice{margin-top:10px;padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);color:var(--muted)}
+    /* Minimal fallback screen, shown only if the game export isn't found */
+    html,body{
+      height:100%;
+      margin:0;
+      font-family:Inter,system-ui,Segoe UI,Roboto,Arial;
+      background:#000;
+      color:#ddd;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .msg{
+      max-width:740px;
+      padding:18px;
+      border-radius:8px;
+      background:#0b0b0d;
+      color:#cbd5e1;
+      text-align:center;
+      font-size:15px;
+    }
+    a{color:#1e90ff}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card" role="main">
-      <h1>BULOFK Games – Canabalt</h1>
-      <p class="lead">Looking for a playable HTML export in this repository. If found, it will be embedded below.</p>
-
-      <div id="status" class="small">Checking for playable files...</div>
-      <ul class="candidates" id="checked" aria-live="polite"></ul>
-
-      <div class="row" style="margin-top:12px">
-        <a id="openFound" class="btn hidden" href="#" target="_blank" rel="noopener">Open in new tab</a>
-        <a id="tryManual" class="btn" href="#" target="_self">Try manual embed</a>
-      </div>
-
-      <div class="play-area hidden" id="playArea" aria-live="polite">
-        <div class="embed-wrap" id="embedWrap"></div>
-        <div class="credit" id="gameCredit">
-          Original game © Finji, LLC. HTML5 port & preservation by <strong>Leonardo Dias Gomes</strong> (YouTube: @BULOFK).
-        </div>
-      </div>
-
-      <div id="fallback" class="small notice" style="margin-top:12px">
-        If nothing is found automatically, upload a compiled HTML5 export (index.html + assets) to your repository root or to <code>export/html5/bin/</code>. Typical HTML5 export paths: <code>export/html5/bin/index.html</code>, <code>bin/index.html</code> or <code>game/index.html</code>.
-      </div>
-    </div>
+  <div class="msg" id="msg" aria-live="polite" hidden>
+    Game not found. Please upload a compiled HTML5 export (index.html + assets) into the repository root or into <code>export/html5/bin/</code>.
   </div>
 
 <script>
-(async function(){
+(function(){
+  // Probable paths where the compiled HTML5 build might be located (priority order)
   const candidates = [
-    'index.html',
     'export/html5/bin/index.html',
     'export/html5/index.html',
-    'export/html5/index.htm',
     'bin/index.html',
-    'bin/index.htm',
+    'index.html',          // in case the export is already in the root
     'game/index.html',
-    'game/index.htm',
-    'play.html',
-    'Canabalt.html',
-    'dist/index.html',
-    'build/index.html'
+    'dist/index.html'
   ];
 
-  const checkedEl = document.getElementById('checked');
-  const status = document.getElementById('status');
-  const openFound = document.getElementById('openFound');
-  const tryManual = document.getElementById('tryManual');
-  const playArea = document.getElementById('playArea');
-  const embedWrap = document.getElementById('embedWrap');
-
-  // try HEAD/GET to detect reachable files; if fetch fails we'll still offer manual embed
-  async function probe(url){
-    try {
-      const r = await fetch(url, { method: 'HEAD' });
-      if (r && r.ok) return true;
-      const r2 = await fetch(url, { method: 'GET' });
-      return r2 && r2.ok;
-    } catch(e){
-      // network/CORS may cause an exception; return undefined to indicate "unknown"
-      return undefined;
-    }
-  }
-
-  // try to embed an iframe and detect load or error with timeout
-  function tryEmbed(url){
-    // clear previous
-    embedWrap.innerHTML = '';
-    const ifr = document.createElement('iframe');
-    ifr.src = url;
-    // allow scripts and same-origin if possible; keep sandbox for safety
-    ifr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
-    ifr.setAttribute('loading', 'lazy');
-    embedWrap.appendChild(ifr);
-
-    // show play area
-    playArea.classList.remove('hidden');
-    openFound.href = url;
-    openFound.classList.remove('hidden');
-
-    // return a Promise that resolves on load or rejects on error/timeout
-    return new Promise((resolve, reject) => {
-      let done = false;
-      const to = setTimeout(()=>{ if(!done){ done=true; resolve(false); } }, 5000);
-      ifr.onload = function(){ if(!done){ done=true; clearTimeout(to); resolve(true); } };
-      ifr.onerror = function(){ if(!done){ done=true; clearTimeout(to); resolve(false); } };
-    });
-  }
-
-  // iterate candidates
-  for (let path of candidates){
-    const li = document.createElement('li');
-    li.textContent = path + ' — checking...';
-    checkedEl.appendChild(li);
-    status.textContent = 'Checking ' + path + ' ...';
-    try {
-      const ok = await probe(path);
-      if (ok === true){
-        li.textContent = path + ' — found ✅';
-        li.className = 'ok';
-        status.textContent = 'Playable file found — embedding: ' + path;
-        await tryEmbed(path);
-        return;
-      } else if (ok === undefined){
-        // unknown (maybe CORS); try embedding as fallback
-        li.textContent = path + ' — unknown (probe failed), attempting embed...';
-        const loaded = await tryEmbed(path);
-        if (loaded){
-          li.textContent = path + ' — embedded ✅';
-          li.className = 'ok';
-          status.textContent = 'Playable file embedded: ' + path;
+  // Try to detect an existing playable build and redirect automatically
+  // Some hosts block HEAD requests; use GET and fallback with mode:'no-cors'
+  async function probeAndRedirect(){
+    for (let path of candidates){
+      try {
+        // Try regular fetch first
+        const resp = await fetch(path, { method: 'GET' });
+        if (resp && (resp.ok || resp.type === 'opaque')) {
+          // Found a playable build, redirect immediately
+          window.location.replace(path);
           return;
-        } else {
-          li.textContent = path + ' — embed failed';
         }
-      } else {
-        li.textContent = path + ' — not found';
+      } catch(e){
+        // If CORS or network issues occur, try again with no-cors
+        try {
+          const r2 = await fetch(path, { method: 'GET', mode: 'no-cors' });
+          if (r2 && (r2.type === 'opaque')) {
+            window.location.replace(path);
+            return;
+          }
+        } catch(e2){
+          // Ignore and continue checking other paths
+        }
       }
-    } catch(err){
-      li.textContent = path + ' — error';
-      console.error(err);
     }
+
+    // If no playable build was found, show message to user/developer
+    const msg = document.getElementById('msg');
+    msg.hidden = false;
+    msg.innerHTML = 'Game not found. Please upload compiled HTML5 export (index.html + assets) to repository root or to <code>export/html5/bin/</code>.';
   }
 
-  status.textContent = 'No playable HTML file found automatically.';
-  // tryManual button will let user attempt common paths in-place
+  // Run immediately on page load
+  probeAndRedirect();
 })();
-
-document.getElementById('tryManual').addEventListener('click', function(e){
-  e.preventDefault();
-  const manualPaths = [
-    'export/html5/bin/index.html',
-    'bin/index.html',
-    'index.html',
-    'game/index.html'
-  ];
-  // try one by one until an embed works
-  (async function(){
-    for (let p of manualPaths){
-      document.getElementById('status').textContent = 'Trying manual embed: ' + p;
-      const success = await (function(url){
-        return new Promise((resolve)=>{
-          const embedWrap = document.getElementById('embedWrap');
-          embedWrap.innerHTML = '';
-          const ifr = document.createElement('iframe');
-          ifr.src = url;
-          ifr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
-          ifr.setAttribute('loading', 'lazy');
-          embedWrap.appendChild(ifr);
-          document.getElementById('playArea').classList.remove('hidden');
-          document.getElementById('openFound').href = url;
-          document.getElementById('openFound').classList.remove('hidden');
-          let done=false;
-          const to=setTimeout(()=>{ if(!done){ done=true; resolve(false); } }, 5000);
-          ifr.onload = ()=>{ if(!done){ done=true; clearTimeout(to); resolve(true); } };
-          ifr.onerror = ()=>{ if(!done){ done=true; clearTimeout(to); resolve(false); } };
-        });
-      })(p);
-      if (success) { document.getElementById('status').textContent = 'Manual embed succeeded: ' + p; return; }
-    }
-    document.getElementById('status').textContent = 'Manual attempts failed. Please ensure compiled HTML5 files are in the repo root or in export/html5/bin/';
-  })();
-});
 </script>
 </body>
 </html>
